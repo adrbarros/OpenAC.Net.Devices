@@ -6,7 +6,7 @@
 // Last Modified By : RFTD
 // Last Modified On : 20-12-2018
 // ***********************************************************************
-// <copyright file="DeviceExtensions.cs" company="OpenAC .Net">
+// <copyright file="OpenRawStream.cs" company="OpenAC .Net">
 //		        		   The MIT License (MIT)
 //	     		    Copyright (c) 2016 Projeto OpenAC .Net
 //
@@ -29,21 +29,54 @@
 // <summary></summary>
 // ***********************************************************************
 
-using System.Text;
+using System;
+using System.IO;
 
 namespace OpenAC.Net.Devices
 {
-    public static class DeviceExtensions
+    internal sealed class OpenRawStream : OpenDeviceStream
     {
-        public static void WriteString(this OpenDeviceStream device, string dados)
+        #region Fields
+
+        private readonly RawPrinterStream printer;
+
+        #endregion Fields
+
+        #region Properties
+
+        protected override int Available => 0;
+
+        #endregion Properties
+
+        #region Constructor
+
+        public OpenRawStream(RawConfig config) : base(config)
         {
-            device.Write(Encoding.UTF8.GetBytes(dados));
+            printer = new RawPrinterStream(config.Impressora);
         }
 
-        public static string ReadString(this OpenDeviceStream device)
+        #endregion Constructor
+
+        #region Methods
+
+        protected override bool OpenInternal()
         {
-            var dados = device.Read();
-            return Encoding.UTF8.GetString(dados);
+            Writer = new BinaryWriter(printer);
+            return true;
         }
+
+        protected override bool CloseInternal()
+        {
+            Writer?.Dispose();
+            Writer = null;
+            return true;
+        }
+
+        protected override void OnDisposing()
+        {
+            printer?.Dispose();
+        }
+
+        #endregion Methods
     }
 }

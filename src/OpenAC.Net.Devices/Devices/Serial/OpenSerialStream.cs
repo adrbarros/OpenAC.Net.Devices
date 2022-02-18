@@ -6,7 +6,7 @@
 // Last Modified By : RFTD
 // Last Modified On : 20-12-2018
 // ***********************************************************************
-// <copyright file="OpenTcpStream.cs" company="OpenAC .Net">
+// <copyright file="OpenSerialStream.cs" company="OpenAC .Net">
 //		        		   The MIT License (MIT)
 //	     		    Copyright (c) 2016 Projeto OpenAC .Net
 //
@@ -29,103 +29,95 @@
 // <summary></summary>
 // ***********************************************************************
 
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
+using System.IO;
+using System.IO.Ports;
+using System.Threading.Tasks;
 
 namespace OpenAC.Net.Devices
 {
-    internal sealed class OpenTcpStream : OpenDeviceStream
+    internal sealed class OpenSerialStream : OpenDeviceStream
     {
         #region Fields
 
-        private TcpClient client;
-        private readonly IPEndPoint conEndPoint;
+        private readonly SerialPort serialPort;
 
         #endregion Fields
 
         #region Constructor
 
-        public OpenTcpStream(OpenDeviceConfig config) : base(config)
+        public OpenSerialStream(SerialConfig config) : base(config)
         {
-            var ports = Config.Porta.Split(':');
-            if (ports.Length < 3) throw new ArgumentException("Endereço e porta não informados");
-
-            conEndPoint = new IPEndPoint(IPAddress.Parse(ports[1]), int.Parse(ports[2]));
-            client = new TcpClient();
+            serialPort = new SerialPort();
         }
 
         #endregion Constructor
 
+        #region Properties
+
+        protected override int Available => serialPort?.BytesToRead ?? 0;
+
+        #endregion Properties
+
         #region Methods
 
-        public override async void Limpar()
+        public override void Limpar()
         {
-            var stream = client.GetStream();
-
-            while (client.Available > 0)
-            {
-                var inbyte = new byte[1];
-                await stream.ReadAsync(inbyte, 0, 1);
-            }
+            if (serialPort.IsOpen) serialPort.DiscardInBuffer();
         }
 
         protected override bool OpenInternal()
         {
-            if (client.Connected) return false;
+            if (serialPort.IsOpen) return false;
 
-            client.Connect(conEndPoint);
+            ConfigSerial();
+            serialPort.Open();
 
-            return client.Connected;
+            Reader = new BinaryReader(serialPort.BaseStream);
+            Writer = new BinaryWriter(serialPort.BaseStream);
+
+            return serialPort.IsOpen;
         }
 
         protected override bool CloseInternal()
         {
-            if (!client.Connected) return false;
+            if (!serialPort.IsOpen) return false;
 
-            client.GetStream().Close();
-            client.Close();
+            serialPort.Close();
+            Reader?.Dispose();
+            Writer?.Dispose();
 
-            client = null;
-            client = new TcpClient();
+            Reader = null;
+            Writer = null;
 
-            return !client.Connected;
+            return !serialPort.IsOpen;
         }
 
-        protected override async void WriteInternal(byte[] dados)
+        private void ConfigSerial()
         {
-            if (dados.Length < 1) return;
+            if (Config is not SerialConfig config) return;
 
-            await client.GetStream().WriteAsync(dados, 0, dados.Length);
-        }
-
-        protected override byte[] ReadInternal()
-        {
-            var ret = new List<byte>();
-            var stream = client.GetStream();
-
-            while (client.Available > 0)
-            {
-                var inbyte = new byte[1];
-                stream.Read(inbyte, 0, 1);
-                if (inbyte.Length < 1) continue;
-
-                var value = (byte)inbyte.GetValue(0);
-                ret.Add(value);
-            }
-
-            return ret.ToArray();
+            serialPort.PortName = config.Porta;
+            serialPort.BaudRate = config.Baud;
+            serialPort.DataBits = config.DataBits;
+            serialPort.Parity = config.Parity;
+            serialPort.StopBits = config.StopBits;
+            serialPort.Handshake = config.Handshake;
+            serialPort.ReadTimeout = config.TimeOut;
+            serialPort.WriteTimeout = config.TimeOut;
+            serialPort.ReadBufferSize = config.ReadBufferSize;
+            serialPort.WriteBufferSize = config.WriteBufferSize;
+            serialPort.Encoding = config.Encoding;
         }
 
         #endregion Methods
 
         #region Dispose Methods
 
-        protected override void Dispose(bool disposing)
+        protected override void OnDisposing()
         {
-            if (disposing) GC.SuppressFinalize(this);
-            ((IDisposable)client)?.Dispose();
+            serialPort?.Close();
+            serialPort?.Dispose();
+            Task.Delay(250).Wait();
         }
 
         #endregion Dispose Methods
