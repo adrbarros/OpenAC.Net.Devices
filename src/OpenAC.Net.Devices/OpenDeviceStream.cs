@@ -31,6 +31,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using OpenAC.Net.Core;
@@ -186,7 +187,7 @@ namespace OpenAC.Net.Devices
         /// <param name="dados"></param>
         /// <param name="timeSleep"></param>
         /// <returns></returns>
-        public byte[] WriteRead(byte[] dados, int timeSleep)
+        public byte[] WriteRead(byte[] dados, int timeSleep = 10)
         {
             if (dados.Length < 1) return new byte[0];
 
@@ -222,7 +223,7 @@ namespace OpenAC.Net.Devices
                     bytesLeft -= count;
                 }
 
-                Thread.Sleep(10);
+                Thread.Sleep(timeSleep);
 
                 var ret = new ByteArrayBuilder();
                 var bufferSize = Math.Max(Config.ReadBufferSize, 1);
@@ -236,8 +237,7 @@ namespace OpenAC.Net.Devices
                         var read = Reader.Read(inbyte, 0, bufferSize);
                         if (read < 1) continue;
 
-                        var value = (byte)inbyte.GetValue(0);
-                        ret.Append(value);
+                        ret.Append(inbyte.Take(read));
                     }
                     catch (IOException ex)
                     {
@@ -282,8 +282,7 @@ namespace OpenAC.Net.Devices
                         var read = Reader.Read(inbyte, 0, bufferSize);
                         if (read < 1) continue;
 
-                        var value = (byte)inbyte.GetValue(0);
-                        ret.Append(value);
+                        ret.Append(inbyte.Take(read));
                     }
                     catch (IOException ex)
                     {
