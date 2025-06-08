@@ -1,14 +1,14 @@
 ﻿// ***********************************************************************
-// Assembly         : OpenAC.Net.Devices.USB
+// Assembly         : OpenAC.Net.Devices
 // Author           : RFTD
-// Created          : 11-06-2022
+// Created          : 20-12-2018
 //
 // Last Modified By : RFTD
-// Last Modified On : 11-06-2022
+// Last Modified On : 20-12-2018
 // ***********************************************************************
-// <copyright file="USBConfig.cs" company="OpenAC .Net">
+// <copyright file="MemoryStreamExtensions.cs" company="OpenAC .Net">
 //		        		   The MIT License (MIT)
-// 		    Copyright (c) 2016 - 2022 Projeto OpenAC .Net
+//	     		    Copyright (c) 2014 - 2024 Projeto OpenAC .Net
 //
 //	 Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -29,45 +29,25 @@
 // <summary></summary>
 // ***********************************************************************
 
-namespace OpenAC.Net.Devices.USB
+using SpawnDev.BlazorJS.JSObjects;
+using Array = System.Array;
+
+namespace OpenAC.Net.Devices.Blazor.Extensions;
+
+internal static class MemoryStreamExtensions
 {
-    public sealed class USBConfig : BaseConfig
+    public static ArrayBuffer ToArrayBuffer(this MemoryStream ms)
     {
-        #region Fields
-
-        private int vendorId;
-        private int productId;
-
-        #endregion Fields
-
-        #region Constructors
-
-        public USBConfig() : base("USB")
-        {
-        }
-
-        public USBConfig(int vendor, int product) : this()
-        {
-            vendorId = vendor;
-            productId = product;
-        }
-
-        #endregion Constructors
-
-        #region Properties
-
-        public int VendorId
-        {
-            get => vendorId;
-            set => SetProperty(ref vendorId, value);
-        }
-
-        public int ProductId
-        {
-            get => productId;
-            set => SetProperty(ref productId, value);
-        }
-
-        #endregion Properties
+        using var uint8Array = new Uint8Array(ms.ToArray());
+        return uint8Array.Buffer;
+    }
+    
+    public static void Clear(this MemoryStream ms)
+    {
+        var buffer = ms.GetBuffer();
+        Array.Clear(buffer, 0, buffer.Length);
+        ms.Position = 0;
+        ms.SetLength(0);
+        ms.Capacity = 0;
     }
 }
