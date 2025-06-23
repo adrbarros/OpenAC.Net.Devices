@@ -31,7 +31,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using OpenAC.Net.Core;
 
@@ -94,9 +93,8 @@ public static class OpenDeviceFactory
             where c.Key == configType || configType.IsAssignableFrom(c.Key)
             select c.Value).FirstOrDefault();
 
-        Guard.Against<OpenException>(device == null, "Classe de comunicação não localizada.");
-        Debug.Assert(device != null, nameof(device) + " != null");
-        return (OpenDeviceStream)Activator.CreateInstance(device, config);
+        if(device == null) throw new OpenException("Classe de comunicação não localizada.");
+        return (OpenDeviceStream?)Activator.CreateInstance(device, config) ?? throw new OpenException("Erro ao instanciar a classe de comunicação.");
     }
 
     #endregion Methods
